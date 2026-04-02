@@ -6,12 +6,32 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const { auth } = require('../middleware/auth');
+const axios = require('axios');
+
+// Helper to verify Google reCAPTCHA
+const verifyRecaptcha = async (token) => {
+    if (!token) return false;
+    try {
+        const response = await axios.post(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+        );
+        return response.data.success;
+    } catch (e) {
+        console.error("reCAPTCHA Verification Error:", e);
+        return false;
+    }
+};
 
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, ref } = req.body;
+    const { username, email, password, ref, captchaToken } = req.body;
     
+    // Verify CAPTCHA
+    if (!await verifyRecaptcha(captchaToken)) {
+        return res.status(400).json({ error: 'CAPTCHA verification failed. Please try again.' });
+    }
+
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ error: 'Email already registered' });
 
@@ -69,10 +89,21 @@ router.post('/verify-email', async (req, res) => {
         if(!user) return res.status(404).json({ error: 'User not found' });
         
         if (user.isEmailVerified) return res.status(400).json({ error: 'Already verified' });
-        if (user.emailVerificationCode !== code) return res.status(400).json({ error: 'Invalid verification code' });
+        
+        if (user.emailVerificationCode !== code) {
+            user.otpAttempts += 1;
+            if (user.otpAttempts >= 3) {
+                user.emailVerificationCode = undefined;
+                await user.save();
+                return res.status(400).json({ error: 'Too many failed attempts. Request a new code.' });
+            }
+            await user.save();
+            return res.status(400).json({ error: 'Invalid verification code' });
+        }
 
         user.isEmailVerified = true;
         user.emailVerificationCode = undefined;
+        user.otpAttempts = 0;
         await user.save();
 
         const token = jwt.sign({ _id: user._id, role: user.role, username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });
@@ -85,29 +116,66 @@ router.post('/verify-email', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, captchaToken } = req.body;
+
+    // Verify CAPTCHA
+    if (!await verifyRecaptcha(captchaToken)) {
+        return res.status(400).json({ error: 'CAPTCHA verification failed. Please try again.' });
+    }
     
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: 'Invalid email or password' });
 
+    // 🔒 Check if account is locked
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+        const remaining = Math.round((user.lockUntil - Date.now()) / 60000);
+        return res.status(403).json({ error: `Account locked. Try again in ${remaining} minutes.` });
+    }
+
     const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(400).json({ error: 'Invalid email or password' });
+    if (!validPassword) {
+        user.loginAttempts += 1;
+        if (user.loginAttempts >= 5) {
+            user.lockUntil = Date.now() + 15 * 60 * 1000; // 15 mins lockout
+            user.loginAttempts = 0; // Reset counter for next cycle
+        }
+        await user.save();
+        return res.status(400).json({ error: 'Invalid email or password' });
+    }
+
+    // Reset attempts upon successful password match
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+    await user.save();
 
     if (!user.isEmailVerified) {
-        // Resend code just in case
+        // Enforce 2-min cooldown for verification email resends
+        if (user.lastOtpSent && (Date.now() - user.lastOtpSent) < 2 * 60 * 1000) {
+            return res.status(429).json({ error: 'Please wait 2 minutes before requesting a new code.' });
+        }
+        
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
         user.emailVerificationCode = verificationCode;
+        user.otpAttempts = 0; // Reset OTP attempts for new code
+        user.lastOtpSent = Date.now();
         await user.save();
+        
         await sendEmail({ email: user.email, subject: 'Verify your KeeStore Email', message: `<p>Your verification code is: <b>${verificationCode}</b></p>` }).catch(console.error);
         
         return res.json({ requiresEmailVerification: true, userId: user._id });
     }
 
     if (user.twoFactorEnabled) {
-        // Generate 2FA code
+        // Check cooldown
+        if (user.lastOtpSent && (Date.now() - user.lastOtpSent) < 2 * 60 * 1000) {
+            return res.status(429).json({ error: 'Please wait 2 minutes between 2FA requests.' });
+        }
+
         const twoFaCode = Math.floor(100000 + Math.random() * 900000).toString();
         user.twoFactorCode = twoFaCode;
-        user.twoFactorExpire = Date.now() + 10 * 60 * 1000; // 10 mins
+        user.twoFactorExpire = Date.now() + 10 * 60 * 1000;
+        user.otpAttempts = 0; // Reset attempts
+        user.lastOtpSent = Date.now();
         await user.save();
 
         await sendEmail({
@@ -131,12 +199,23 @@ router.post('/verify-2fa', async (req, res) => {
     try {
         const { userId, code } = req.body;
         const user = await User.findById(userId);
-        
-        if (!user || user.twoFactorCode !== code) return res.status(400).json({ error: 'Invalid or expired code' });
+        if (!user) return res.status(404).json({ error: 'User not found' });
         if (user.twoFactorExpire < Date.now()) return res.status(400).json({ error: 'Code has expired' });
+
+        if (user.twoFactorCode !== code) {
+            user.otpAttempts += 1;
+            if (user.otpAttempts >= 3) {
+                user.twoFactorCode = undefined;
+                await user.save();
+                return res.status(400).json({ error: 'Too many failed attempts. Code invalidated.' });
+            }
+            await user.save();
+            return res.status(400).json({ error: 'Invalid code' });
+        }
 
         user.twoFactorCode = undefined;
         user.twoFactorExpire = undefined;
+        user.otpAttempts = 0;
         await user.save();
 
         const token = jwt.sign({ _id: user._id, role: user.role, username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: '1d' });

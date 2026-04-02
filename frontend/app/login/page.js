@@ -3,10 +3,12 @@ import { useState } from "react";
 import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const RECAPTCHA_SITE_KEY = "6LdGBaQsAAAAAII2E4z_bJiBltTK0FH1KtmL_saN";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,14 +18,17 @@ export default function Login() {
   const [mode, setMode] = useState("login"); // login, 2fa, verify
   const [code, setCode] = useState("");
   const [userId, setUserId] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState(null);
   const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (!captchaToken) return setError("Please verify the CAPTCHA.");
+    
     setLoading(true); setError("");
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
+      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password, captchaToken });
       
       if (res.data.requiresEmailVerification) {
           setUserId(res.data.userId);
@@ -98,6 +103,14 @@ export default function Login() {
 
             <div className="text-right">
                 <Link href="/forgot-password" className="text-xs font-bold text-primary hover:text-blue-700 transition">Forgot Password?</Link>
+            </div>
+
+            <div className="flex justify-center my-4 scale-95 origin-center">
+                <ReCAPTCHA 
+                  sitekey={RECAPTCHA_SITE_KEY} 
+                  onChange={(token) => setCaptchaToken(token)}
+                  theme="light"
+                />
             </div>
 
             <button 

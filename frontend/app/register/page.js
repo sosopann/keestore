@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { User, Lock, Mail, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const RECAPTCHA_SITE_KEY = "6LdGBaQsAAAAAII2E4z_bJiBltTK0FH1KtmL_saN";
 
 function RegisterContent() {
   const [username, setUsername] = useState("");
@@ -14,17 +16,20 @@ function RegisterContent() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (!captchaToken) return setError("Please verify the CAPTCHA.");
+
     setLoading(true);
     setError("");
     try {
       const ref = searchParams.get("ref");
-      await axios.post(`${API_BASE_URL}/api/auth/register`, { username, email, password, ref });
+      await axios.post(`${API_BASE_URL}/api/auth/register`, { username, email, password, ref, captchaToken });
       alert("Welcome! A 6-digit confirmation code has been sent to your email. Please login to verify.");
       router.push("/login");
     } catch (err) {
@@ -82,6 +87,13 @@ function RegisterContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                />
+            </div>
+
+            <div className="flex justify-center my-2 scale-90 origin-center">
+                <ReCAPTCHA 
+                  sitekey={RECAPTCHA_SITE_KEY} 
+                  onChange={(token) => setCaptchaToken(token)}
                 />
             </div>
 

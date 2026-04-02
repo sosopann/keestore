@@ -17,6 +17,7 @@ router.post('/create-checkout-session', auth, async (req, res) => {
     const productsToUpdate = [];
 
     for (let item of items) {
+      if (!item.quantity || item.quantity <= 0) return res.status(400).json({ error: 'Invalid quantity' });
       const product = await Product.findById(item.productId);
       if (!product) return res.status(404).json({ error: `Product not found: ${item.productId}` });
       if (product.keys.length < item.quantity) return res.status(400).json({ error: `Not enough stock for ${product.title}` });
@@ -76,11 +77,16 @@ router.post('/pay-wallet', auth, async (req, res) => {
     let productsToUpdate = [];
 
     for (let item of items) {
+       const qty = Math.abs(Number(item.quantity) || 0);
+       if (qty <= 0) return res.status(400).json({ error: 'Invalid quantity' });
+
        const product = await Product.findById(item.productId);
        if (!product) return res.status(404).json({ error: `Product not found: ${item.productId}` });
-       if (product.keys.length < item.quantity) return res.status(400).json({ error: `Not enough stock for ${product.title}` });
-       totalAmount += (product.price * item.quantity);
-       productsToUpdate.push({ product, quantity: item.quantity });
+       if (product.keys.length < qty) return res.status(400).json({ error: `Not enough stock for ${product.title}` });
+       
+       const price = Math.abs(product.price);
+       totalAmount += (price * qty);
+       productsToUpdate.push({ product, quantity: qty });
     }
 
     if (promoCode) {

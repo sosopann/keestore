@@ -15,6 +15,12 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: { type: String },
   resetPasswordExpire: { type: Date },
   
+  // Brute-force & OTP Protection
+  loginAttempts: { type: Number, default: 0 },
+  lockUntil: { type: Date },
+  otpAttempts: { type: Number, default: 0 },
+  lastOtpSent: { type: Date },
+  
   // 2FA Fields
   twoFactorEnabled: { type: Boolean, default: false },
   twoFactorCode: { type: String },

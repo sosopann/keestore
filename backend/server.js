@@ -11,9 +11,32 @@ const userRoutes = require('./routes/users');
 const couponRoutes = require('./routes/coupons');
 const ticketRoutes = require('./routes/tickets');
 const settingsRoutes = require('./routes/settings');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const app = express();
 const path = require('path');
+
+// 🛡️ Security Middlewares
+app.use(mongoSanitize()); // Prevent NoSQL Injection
+
+// Rate Limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests, please try again later.' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 5, // 5 attempts per 15 mins for sensitive routes
+  message: { error: 'Too many login/register attempts. Please wait 15 minutes.' }
+});
+
+app.use('/api/', generalLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
 
 // Middleware
 app.use(cors());

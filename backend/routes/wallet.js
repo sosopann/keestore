@@ -17,8 +17,9 @@ router.get('/balance', auth, async (req, res) => {
 // Create Top-up Checkout Session
 router.post('/create-topup-session', auth, async (req, res) => {
   try {
-    const { amount } = req.body;
-    if (!amount || amount < 1) return res.status(400).json({ error: 'Minimum top-up is $1.00' });
+    let { amount } = req.body;
+    amount = Math.abs(Number(amount) || 0);
+    if (amount < 1) return res.status(400).json({ error: 'Minimum top-up is $1.00' });
 
     const frontendUrl = process.env.FRONTEND_URL ? (process.env.FRONTEND_URL.startsWith('http') ? process.env.FRONTEND_URL : `https://${process.env.FRONTEND_URL}`) : 'http://localhost:3000';
 
