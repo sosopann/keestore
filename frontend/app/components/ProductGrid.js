@@ -8,6 +8,8 @@ import { useToast } from "../context/ToastContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function ProductGrid() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ export default function ProductGrid() {
 
   useEffect(() => {
     // Fetch products
-    axios.get("http://localhost:5000/api/products")
+    axios.get(`${API_BASE_URL}/api/products`)
       .then(res => {
         setProducts(res.data.slice(0, 12)); // limit to 12
         setLoading(false);

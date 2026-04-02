@@ -7,6 +7,8 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import Link from "next/link";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loadingId, setLoadingId] = useState(null);
@@ -17,7 +19,7 @@ export default function ProductsPage() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/products")
+    axios.get(`${API_BASE_URL}/api/products`)
       .then(res => setProducts(res.data.slice(0, 100)))
       .catch(console.error);
   }, []);

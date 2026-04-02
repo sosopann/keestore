@@ -54,11 +54,11 @@ export default function AdminDashboard() {
       try {
         const token = localStorage.getItem("token");
         const [prodRes, ordRes, usersRes, tRes, cRes] = await Promise.all([
-           axios.get("http://localhost:5000/api/products"),
-           axios.get("http://localhost:5000/api/orders/all", { headers: { Authorization: `Bearer ${token}` }}),
-           axios.get("http://localhost:5000/api/users", { headers: { Authorization: `Bearer ${token}` }}),
-           axios.get("http://localhost:5000/api/tickets/all", { headers: { Authorization: `Bearer ${token}` }}),
-           axios.get("http://localhost:5000/api/coupons", { headers: { Authorization: `Bearer ${token}` }})
+           axios.get(`${API_BASE_URL}/api/products`),
+           axios.get(`${API_BASE_URL}/api/orders/all`, { headers: { Authorization: `Bearer ${token}` }}),
+           axios.get(`${API_BASE_URL}/api/users`, { headers: { Authorization: `Bearer ${token}` }}),
+           axios.get(`${API_BASE_URL}/api/tickets/all`, { headers: { Authorization: `Bearer ${token}` }}),
+           axios.get(`${API_BASE_URL}/api/coupons`, { headers: { Authorization: `Bearer ${token}` }})
         ]);
         setProducts(prodRes.data);
         setOrders(ordRes.data);
@@ -86,7 +86,7 @@ export default function AdminDashboard() {
           if (imageFile) formData.append('image', imageFile);
           else if (imageUrl) formData.append('imageUrl', imageUrl);
 
-          await axios.post("http://localhost:5000/api/products", formData, { 
+          await axios.post(`${API_BASE_URL}/api/products`, formData, { 
              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
           });
           alert("Product added successfully!");
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
       try {
           const token = localStorage.getItem("token");
           const keysArray = newKeys.split(',').map(k => k.trim()).filter(k => k);
-          await axios.post(`http://localhost:5000/api/products/${selectedProductId}/keys`, {
+          await axios.post(`${API_BASE_URL}/api/products/${selectedProductId}/keys`, {
               keys: keysArray
           }, { headers: { Authorization: `Bearer ${token}` }});
           alert(`Added ${keysArray.length} keys successfully!`);
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
       e.preventDefault();
       try {
           const token = localStorage.getItem("token");
-          await axios.post("http://localhost:5000/api/coupons", { code: promoCode, discountPercent: Number(promoDiscount), maxUses: Number(promoUses) }, { headers: { Authorization: `Bearer ${token}` }});
+          await axios.post(`${API_BASE_URL}/api/coupons`, { code: promoCode, discountPercent: Number(promoDiscount), maxUses: Number(promoUses) }, { headers: { Authorization: `Bearer ${token}` }});
           alert("Promo Code Created!");
           setPromoCode(""); setPromoDiscount(""); setPromoUses(0); fetchData();
       } catch(err) { alert(err.response?.data?.error || err.message); }
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
   const handleDeletePromo = async (id) => {
       try {
           const token = localStorage.getItem("token");
-          await axios.delete(`http://localhost:5000/api/coupons/${id}`, { headers: { Authorization: `Bearer ${token}` }});
+          await axios.delete(`${API_BASE_URL}/api/coupons/${id}`, { headers: { Authorization: `Bearer ${token}` }});
           fetchData();
       } catch(e) {}
   };
@@ -132,7 +132,7 @@ export default function AdminDashboard() {
       if (!reply) return;
       try {
           const token = localStorage.getItem("token");
-          await axios.put(`http://localhost:5000/api/tickets/${id}/reply`, { reply }, { headers: { Authorization: `Bearer ${token}` }});
+          await axios.put(`${API_BASE_URL}/api/tickets/${id}/reply`, { reply }, { headers: { Authorization: `Bearer ${token}` }});
           fetchData();
       } catch(e) {}
   };
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
   const handleCloseTicket = async (id) => {
       try {
           const token = localStorage.getItem("token");
-          await axios.put(`http://localhost:5000/api/tickets/${id}/close`, {}, { headers: { Authorization: `Bearer ${token}` }});
+          await axios.put(`${API_BASE_URL}/api/tickets/${id}/close`, {}, { headers: { Authorization: `Bearer ${token}` }});
           fetchData();
       } catch(e) {}
   };
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
      if(!confirm("WARNING! Wipe ALL transaction history entirely?")) return;
      const token = localStorage.getItem("token");
      try {
-         await axios.delete("http://localhost:5000/api/orders/wipe/all", { headers: { Authorization: `Bearer ${token}` }});
+         await axios.delete(`${API_BASE_URL}/api/orders/wipe/all`, { headers: { Authorization: `Bearer ${token}` }});
          alert("Complete Global History Wiped."); fetchData();
      } catch (err) { alert(err.message); }
   };
@@ -158,7 +158,7 @@ export default function AdminDashboard() {
       if(!confirm("Wipe this specific transaction from ledger?")) return;
       const token = localStorage.getItem("token");
       try {
-          await axios.delete(`http://localhost:5000/api/orders/${id}`, { headers: { Authorization: `Bearer ${token}` }});
+          await axios.delete(`${API_BASE_URL}/api/orders/${id}`, { headers: { Authorization: `Bearer ${token}` }});
           fetchData();
       } catch (err) { alert(err.message); }
   };
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
     if(val === null || isNaN(val)) return;
     try {
        const token = localStorage.getItem("token");
-       await axios.put(`http://localhost:5000/api/users/${userId}/wallet`, { balance: Number(val) }, { headers: { Authorization: `Bearer ${token}` } });
+       await axios.put(`${API_BASE_URL}/api/users/${userId}/wallet`, { balance: Number(val) }, { headers: { Authorization: `Bearer ${token}` } });
        alert("Wallet balance forcefully set."); fetchData();
     } catch(e) { alert(e.message); }
   };
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
       if(!confirm("Promote this user to Admin Mode?")) return;
       try {
           const token = localStorage.getItem("token");
-          await axios.put(`http://localhost:5000/api/users/${userId}/role`, { role: 'admin' }, { headers: { Authorization: `Bearer ${token}` } });
+          await axios.put(`${API_BASE_URL}/api/users/${userId}/role`, { role: 'admin' }, { headers: { Authorization: `Bearer ${token}` } });
           alert("User is now an Administrator."); fetchData();
       } catch(e) { alert(e.message); }
   };
@@ -464,7 +464,7 @@ export default function AdminDashboard() {
                                                  if (!newPrice || isNaN(newPrice)) return;
                                                  try {
                                                      const token = localStorage.getItem("token");
-                                                     await axios.put(`http://localhost:5000/api/products/${p._id}`, { price: parseFloat(newPrice) }, { headers: { Authorization: `Bearer ${token}` } });
+                                                     await axios.put(`${API_BASE_URL}/api/products/${p._id}`, { price: parseFloat(newPrice) }, { headers: { Authorization: `Bearer ${token}` } });
                                                      alert("Product Updated!"); fetchData();
                                                  } catch(e) { alert("Failed to update."); }
                                              }} className="text-blue-500 hover:text-blue-700 p-2"><Edit size={16}/></button>
@@ -473,7 +473,7 @@ export default function AdminDashboard() {
                                                  if(!confirm(`Delete ${p.title} entirely?`)) return;
                                                  try {
                                                      const token = localStorage.getItem("token");
-                                                     await axios.delete(`http://localhost:5000/api/products/${p._id}`, { headers: { Authorization: `Bearer ${token}` } });
+                                                     await axios.delete(`${API_BASE_URL}/api/products/${p._id}`, { headers: { Authorization: `Bearer ${token}` } });
                                                      alert("Product Deleted!"); fetchData();
                                                  } catch(e) { alert("Failed to delete."); }
                                              }} className="text-red-400 hover:text-red-600 p-2"><Trash2 size={16}/></button>
@@ -664,7 +664,7 @@ export default function AdminDashboard() {
                          if(!file) return alert("Select an image!");
                          const formData = new FormData(); formData.append('logo', file);
                          try {
-                             await axios.post("http://localhost:5000/api/settings/logo", formData, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }});
+                             await axios.post(`${API_BASE_URL}/api/settings/logo`, formData, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }});
                              alert("Logo updated! Refresh the storefront to see changes.");
                          } catch(err) { alert(err.response?.data?.error || err.message || "Failed to upload."); }
                      }}>

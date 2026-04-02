@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Lock, Mail, ShieldAlert } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +23,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true); setError("");
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", { email, password });
+      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
       
       if (res.data.requiresEmailVerification) {
           setUserId(res.data.userId);
@@ -45,7 +47,7 @@ export default function Login() {
       setLoading(true); setError("");
       try {
           const endpoint = type === '2fa' ? "/api/auth/verify-2fa" : "/api/auth/verify-email";
-          const res = await axios.post(`http://localhost:5000${endpoint}`, { userId, code });
+          const res = await axios.post(`${API_BASE_URL}${endpoint}`, { userId, code });
           login(res.data.token, res.data.username, res.data.role, res.data.email);
           router.push("/dashboard");
       } catch(err) {

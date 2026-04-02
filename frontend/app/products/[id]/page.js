@@ -7,6 +7,8 @@ import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
 import Link from "next/link";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function ProductDetailPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +20,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!params.id) return;
-    axios.get(`http://localhost:5000/api/products`)
+    axios.get(`${API_BASE_URL}/api/products`)
       .then(res => {
          const found = res.data.find(p => p._id === params.id);
          if(found) setProduct(found);

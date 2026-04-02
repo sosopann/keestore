@@ -6,6 +6,8 @@ import { KeyRound, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "../context/ToastContext";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
     const [status, setStatus] = useState("idle"); // idle, loading, success, error
@@ -15,7 +17,7 @@ export default function ForgotPasswordPage() {
         e.preventDefault();
         setStatus("loading");
         try {
-            await axios.post("http://localhost:5000/api/auth/forgot-password", { email });
+            await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, { email });
             setStatus("success");
             addToast("Recovery email dispatched!", "success");
         } catch (err) {
