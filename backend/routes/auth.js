@@ -10,14 +10,32 @@ const axios = require('axios');
 
 // Helper to verify Google reCAPTCHA
 const verifyRecaptcha = async (token) => {
-    if (!token) return false;
+    if (!token) {
+        console.log("reCAPTCHA Error: No token provided by the frontend.");
+        return false;
+    }
     try {
+        const secret = process.env.RECAPTCHA_SECRET_KEY;
         const response = await axios.post(
-            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
+            `https://www.google.com/recaptcha/api/siteverify`,
+            null,
+            {
+                params: {
+                    secret: secret,
+                    response: token
+                }
+            }
         );
+        
+        console.log("Google reCAPTCHA Verification Response:", response.data);
+        
+        if (!response.data.success) {
+            console.log("reCAPTCHA Failed details:", response.data['error-codes']);
+        }
+        
         return response.data.success;
     } catch (e) {
-        console.error("reCAPTCHA Verification Error:", e);
+        console.error("reCAPTCHA Verification Exception:", e.message);
         return false;
     }
 };
