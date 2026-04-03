@@ -17,6 +17,23 @@ const mongoSanitize = require('express-mongo-sanitize');
 const app = express();
 const path = require('path');
 
+// 🏁 Pre-Flight / CORS Headers (VERY TOP)
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    const allowedOrigins = ['https://keestore.vercel.app', 'http://localhost:3000'];
+    if (allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 // 🛡️ Security Middlewares
 app.use(mongoSanitize()); // Prevent NoSQL Injection
 
@@ -37,14 +54,6 @@ app.use('/api/', generalLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
-
-// Middleware
-app.use(cors({
-  origin: ['https://keestore.vercel.app', 'http://localhost:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
 
 // Use JSON parser for all routes except Stripe Webhook
 app.use((req, res, next) => {

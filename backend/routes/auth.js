@@ -256,28 +256,32 @@ router.put('/toggle-2fa', auth, async (req, res) => {
 // Forgot Password
 router.post('/forgot-password', async (req, res) => {
     try {
-        const user = await User.findOne({ email: req.body.email });
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Please provide an email' });
+
+        const user = await User.findOne({ email });
+        // Security best practice: don't reveal if user exists, but here the user wanted direct help
         if (!user) return res.status(404).json({ error: 'No user with that email' });
 
         const resetToken = crypto.randomBytes(20).toString('hex');
         user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
         await user.save();
 
-        const frontendUrl = process.env.FRONTEND_URL ? (process.env.FRONTEND_URL.startsWith('http') ? process.env.FRONTEND_URL : `https://${process.env.FRONTEND_URL}`) : 'http://localhost:3000';
+        const rawUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
         const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
         await sendEmail({
             email: user.email,
             subject: 'KeeStore Password Reset Request',
-            message: `<p>You are receiving this email because you requested the reset of a password. Please click the following link to complete the process:</p>
-                      <a href="${resetUrl}">Reset Password Link</a>
-                      <p>Or paste this into your browser: <br> ${resetUrl}</p>`
+            message: `<h1>Password Reset</h1><p>Click the link below to reset your password. Valid for 10 minutes:</p><a href="${resetUrl}" style="background:#3b82f6;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">Reset Password Now</a>`
         });
 
-        res.json({ message: 'Email sent successfully' });
+        res.json({ success: true, message: 'Email sent successfully' });
     } catch(e) {
-        res.status(500).json({ error: e.message });
+        console.error("Forgot Password Error:", e);
+        res.status(500).json({ error: 'Server error while sending reset email.' });
     }
 });
 
