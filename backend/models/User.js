@@ -24,7 +24,10 @@ const userSchema = new mongoose.Schema({
   // 2FA Fields
   twoFactorEnabled: { type: Boolean, default: false },
   twoFactorCode: { type: String },
-  twoFactorExpire: { type: Date }
+  twoFactorExpire: { type: Date },
+  
+  // Fraud Prevention
+  usedCheckoutSessions: [String]
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

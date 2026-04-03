@@ -52,15 +52,20 @@ router.post('/verify-topup', auth, async (req, res) => {
     const session = await stripe.checkout.sessions.retrieve(session_id);
 
     if (session.payment_status === 'paid' && session.metadata.type === 'wallet_topup') {
-        // Prevent double claiming by checking if metadata indicates it was already processed
-        // For local development, we just assume it's legit if retrieved once, but we shouldn't infinitely add.
-        // A real DB transaction check is required, let's use the user model.
-        
         const user = await User.findById(req.user._id);
-        // Quick local hack: we check if session ID is in a "used Sessions" array (which doesn't exist, so we will just patch it by adding simple logic or trusting it for localhost debug).
-        // Best approach without modifying schema: add session to an in-memory Set or just process it.
+        
+        // Prevent double claiming
+        if (user.usedCheckoutSessions && user.usedCheckoutSessions.includes(session_id)) {
+            return res.status(400).json({ error: 'This payment has already been processed.' });
+        }
+
         const processedAmount = parseFloat(amount);
         user.walletBalance += processedAmount;
+        
+        // Mark session as used
+        if (!user.usedCheckoutSessions) user.usedCheckoutSessions = [];
+        user.usedCheckoutSessions.push(session_id);
+        
         await user.save();
         
         return res.json({ success: true, newBalance: user.walletBalance });
